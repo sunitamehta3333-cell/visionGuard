@@ -29,7 +29,7 @@
   <div class="wrap">
     <div class="eyebrow">Bluetooth</div>
     <h1>Paired devices</h1>
-    <p class="lede">Scan for nearby Vision Guard units and connect. Once paired, live sensor data flows to the dashboard over HC-05.</p>
+    <p class="lede">A simulated pairing demo — tapping Connect here doesn't create a real link. For an actual Bluetooth connection to real hardware, use the Dashboard page instead.</p>
 
     <div class="scan-bar">
       <div class="scan-left">
@@ -82,33 +82,22 @@
 </footer>
 
 <script>
-  // connect/disconnect toggles, persisted for the dashboard page
-  function loadState(){
-    try{ return JSON.parse(localStorage.getItem('vg_devices')||'{}'); }catch(e){ return {}; }
-  }
-  function saveState(state){
-    localStorage.setItem('vg_devices', JSON.stringify(state));
-  }
-
-  const state = loadState();
+  // Simulated demo only — resets every visit, does not persist,
+  // and has no connection to the real Bluetooth link on dashboard.html.
 
   document.querySelectorAll('.device-row-card').forEach(card=>{
-    const id = card.dataset.device;
     const btn = card.querySelector('.dc-action');
-    const isOn = state[id] === true;
-    setBtn(btn, card, isOn);
+    setBtn(btn, card, false);
 
     btn.addEventListener('click', ()=>{
       const nowOn = btn.dataset.state !== 'on';
       setBtn(btn, card, nowOn);
-      state[id] = nowOn;
-      saveState(state);
     });
   });
 
   function setBtn(btn, card, on){
     btn.dataset.state = on ? 'on' : 'off';
-    btn.textContent = on ? 'Connected' : 'Connect';
+    btn.textContent = on ? 'Connected (simulated)' : 'Connect';
     btn.classList.toggle('is-connected', on);
     card.classList.toggle('connected', on);
   }
