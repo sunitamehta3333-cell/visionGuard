@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Vision Guard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <nav class="wrap">
+    <a href="index.html" class="brand" style="text-decoration:none;"><span class="brand-dot"></span>VISION GUARD</a>
+    <div class="navlinks">
+      <a href="index.html">Home</a>
+      <a href="devices.html">Devices</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="team.html">Team</a>
+      <a href="pitch.html">Pitch</a>
+    </div>
+  </nav>
+</header>
+
+<section class="page-hero">
+  <div class="wrap">
+    <div class="eyebrow">Live view</div>
+    <h1>Sensor dashboard</h1>
+    <p class="lede">Simulated readings for demo purposes — connect devices on the Devices page to see them go live here.</p>
+    <div id="connStatus" class="status-pill"><span class="dot"></span>No devices connected</div>
+
+    <div class="readout-grid">
+      <div class="readout-card">
+        <div class="readout-label">Cane · forward range</div>
+        <div class="readout-value" id="caneReading">—</div>
+        <div class="readout-sub" id="caneSub">Waiting for connection</div>
+      </div>
+      <div class="readout-card">
+        <div class="readout-label">Glasses · head level</div>
+        <div class="readout-value" id="glassesReading">—</div>
+        <div class="readout-sub" id="glassesSub">Waiting for connection</div>
+      </div>
+      <div class="readout-card">
+        <div class="readout-label">Alerts today</div>
+        <div class="readout-value" id="alertCount">0</div>
+        <div class="readout-sub">Since dashboard opened</div>
+      </div>
+    </div>
+
+    <div class="log-panel">
+      <div class="log-head">Alert log</div>
+      <div class="log-body" id="logBody">
+        <div class="log-row"><span class="log-time">—</span><span class="log-source" style="color:var(--fog);">No activity yet. Connect a device to begin.</span><span></span></div>
+      </div>
+    </div>
+
+    <div class="cta-row" style="margin-top:36px;">
+      <a href="devices.html" class="btn btn-ghost">← Manage devices</a>
+      <a href="index.html" class="btn btn-ghost">Back to home</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-row">
+    <div class="brand"><span class="brand-dot"></span>VISION GUARD</div>
+    <div>Assistive mobility kit — student project</div>
+  </div>
+</footer>
+
+<script>
+  function loadState(){
+    try{ return JSON.parse(localStorage.getItem('vg_devices')||'{}'); }catch(e){ return {}; }
+  }
+
+  const state = loadState();
+  const caneOn = state.cane === true;
+  const glassesOn = state.glasses === true;
+  const anyOn = caneOn || glassesOn;
+
+  const connStatus = document.getElementById('connStatus');
+  const caneReading = document.getElementById('caneReading');
+  const caneSub = document.getElementById('caneSub');
+  const glassesReading = document.getElementById('glassesReading');
+  const glassesSub = document.getElementById('glassesSub');
+  const alertCountEl = document.getElementById('alertCount');
+  const logBody = document.getElementById('logBody');
+
+  let alertCount = 0;
+
+  if(anyOn){
+    const names = [caneOn && 'Cane', glassesOn && 'Glasses'].filter(Boolean).join(' + ');
+    connStatus.classList.add('on');
+    connStatus.innerHTML = '<span class="dot"></span>' + names + ' connected';
+    logBody.innerHTML = '';
+  }
+
+  if(caneOn){
+    caneSub.textContent = 'Live · updates every 1.2s';
+  }
+  if(glassesOn){
+    glassesSub.textContent = 'Live · updates every 1.2s';
+  }
+
+  function fmtTime(){
+    const d = new Date();
+    return d.toTimeString().slice(0,8);
+  }
+
+  function pushLog(source, distance, alertLevel){
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    const tagClass = alertLevel === 'warn' ? 'warn' : 'info';
+    const tagText = alertLevel === 'warn' ? 'Obstacle' : 'Clear';
+    row.innerHTML = `<span class="log-time">${fmtTime()}</span><span class="log-source">${source} · ${distance}cm</span><span class="log-tag ${tagClass}">${tagText}</span>`;
+    logBody.prepend(row);
+    while(logBody.children.length > 25){ logBody.removeChild(logBody.lastChild); }
+  }
+
+  function tick(){
+    if(caneOn){
+      const d = Math.floor(20 + Math.random()*130);
+      caneReading.textContent = d + 'cm';
+      const warn = d < 45;
+      caneReading.classList.toggle('alert', warn);
+      if(warn){ alertCount++; alertCountEl.textContent = alertCount; pushLog('Cane', d, 'warn'); }
+      else if(Math.random() < 0.3){ pushLog('Cane', d, 'info'); }
+    }
+    if(glassesOn){
+      const d = Math.floor(30 + Math.random()*150);
+      glassesReading.textContent = d + 'cm';
+      const warn = d < 55;
+      glassesReading.classList.toggle('alert', warn);
+      if(warn){ alertCount++; alertCountEl.textContent = alertCount; pushLog('Glasses', d, 'warn'); }
+      else if(Math.random() < 0.3){ pushLog('Glasses', d, 'info'); }
+    }
+  }
+
+  if(anyOn){
+    tick();
+    setInterval(tick, 1200);
+  }
+</script>
+
+</body>
+</html>

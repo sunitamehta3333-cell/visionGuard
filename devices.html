@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Devices — Vision Guard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <nav class="wrap">
+    <a href="index.html" class="brand" style="text-decoration:none;"><span class="brand-dot"></span>VISION GUARD</a>
+    <div class="navlinks">
+      <a href="index.html">Home</a>
+      <a href="devices.html">Devices</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="team.html">Team</a>
+      <a href="pitch.html">Pitch</a>
+    </div>
+  </nav>
+</header>
+
+<section class="page-hero">
+  <div class="wrap">
+    <div class="eyebrow">Bluetooth</div>
+    <h1>Paired devices</h1>
+    <p class="lede">Scan for nearby Vision Guard units and connect. Once paired, live sensor data flows to the dashboard over HC-05.</p>
+
+    <div class="scan-bar">
+      <div class="scan-left">
+        <div class="scan-ring idle" id="scanRing"></div>
+        <span class="scan-text" id="scanText">Idle · <b>2</b> devices in range</span>
+      </div>
+      <button class="btn btn-ghost" id="scanBtn" style="cursor:pointer;">Scan again</button>
+    </div>
+
+    <div class="device-list" id="deviceList">
+      <div class="device-row-card" data-device="cane" data-battery="82">
+        <div class="dc-icon">🦯</div>
+        <div class="dc-info">
+          <h4>Cane Unit</h4>
+          <p>HC-05 · MAC 3C:A5:0D:11:2F</p>
+        </div>
+        <div class="dc-battery">
+          <div class="batt-track"><div class="batt-fill" style="width:82%;"></div></div>
+          <span>82%</span>
+        </div>
+        <button class="dc-action" data-state="off">Connect</button>
+      </div>
+
+      <div class="device-row-card" data-device="glasses" data-battery="64">
+        <div class="dc-icon">👓</div>
+        <div class="dc-info">
+          <h4>Glasses Unit</h4>
+          <p>HC-05 · MAC 3C:A5:0D:11:3A</p>
+        </div>
+        <div class="dc-battery">
+          <div class="batt-track"><div class="batt-fill" style="width:64%;"></div></div>
+          <span>64%</span>
+        </div>
+        <button class="dc-action" data-state="off">Connect</button>
+      </div>
+    </div>
+
+    <div class="cta-row" style="margin-top:36px;">
+      <a href="dashboard.html" class="btn btn-primary">Go to dashboard →</a>
+      <a href="index.html" class="btn btn-ghost">← Back to home</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-row">
+    <div class="brand"><span class="brand-dot"></span>VISION GUARD</div>
+    <div>Assistive mobility kit — student project</div>
+  </div>
+</footer>
+
+<script>
+  // connect/disconnect toggles, persisted for the dashboard page
+  function loadState(){
+    try{ return JSON.parse(localStorage.getItem('vg_devices')||'{}'); }catch(e){ return {}; }
+  }
+  function saveState(state){
+    localStorage.setItem('vg_devices', JSON.stringify(state));
+  }
+
+  const state = loadState();
+
+  document.querySelectorAll('.device-row-card').forEach(card=>{
+    const id = card.dataset.device;
+    const btn = card.querySelector('.dc-action');
+    const isOn = state[id] === true;
+    setBtn(btn, card, isOn);
+
+    btn.addEventListener('click', ()=>{
+      const nowOn = btn.dataset.state !== 'on';
+      setBtn(btn, card, nowOn);
+      state[id] = nowOn;
+      saveState(state);
+    });
+  });
+
+  function setBtn(btn, card, on){
+    btn.dataset.state = on ? 'on' : 'off';
+    btn.textContent = on ? 'Connected' : 'Connect';
+    btn.classList.toggle('is-connected', on);
+    card.classList.toggle('connected', on);
+  }
+
+  // scan animation
+  const scanRing = document.getElementById('scanRing');
+  const scanText = document.getElementById('scanText');
+  const scanBtn = document.getElementById('scanBtn');
+
+  scanBtn.addEventListener('click', ()=>{
+    scanRing.classList.remove('idle');
+    scanText.textContent = 'Scanning…';
+    scanBtn.disabled = true;
+    setTimeout(()=>{
+      scanRing.classList.add('idle');
+      scanText.innerHTML = 'Idle · <b>2</b> devices in range';
+      scanBtn.disabled = false;
+    }, 1600);
+  });
+</script>
+
+</body>
+</html>
