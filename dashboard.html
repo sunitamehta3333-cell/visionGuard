@@ -19,6 +19,7 @@
       <a href="dashboard.html">Dashboard</a>
       <a href="location.html">Location</a>
       <a href="sos.html">SOS</a>
+      <a href="prototype.html">Prototype</a>
       <a href="team.html">Team</a>
     </div>
   </nav>
@@ -28,8 +29,18 @@
   <div class="wrap">
     <div class="eyebrow">Live view</div>
     <h1>Sensor dashboard</h1>
-    <p class="lede">Simulated readings for demo purposes — connect devices on the Devices page to see them go live here.</p>
+    <p class="lede" id="ledeText">Connect the cane and glasses over Bluetooth for live readings — or use simulated demo mode if no hardware is nearby.</p>
     <div id="connStatus" class="status-pill"><span class="dot"></span>No devices connected</div>
+    <div id="bleUnsupported" class="placeholder" style="display:none; text-align:left; padding:20px 22px; margin-top:8px;">
+      <div class="ph-tag">Not available</div>
+      <p>This browser doesn't support Web Bluetooth (this includes Safari on every iOS device — an Apple restriction, not something a website can work around). Use Chrome or Edge for a real connection, or run the simulated demo below.</p>
+    </div>
+
+    <div class="cta-row" style="margin-top:20px;">
+      <button class="btn btn-primary" id="connectCaneBtn" style="cursor:pointer;">Connect cane (Bluetooth)</button>
+      <button class="btn btn-primary" id="connectGlassesBtn" style="cursor:pointer;">Connect glasses (Bluetooth)</button>
+      <button class="btn btn-ghost" id="simulateBtn" style="cursor:pointer;">Run simulated demo instead</button>
+    </div>
 
     <div class="readout-grid">
       <div class="readout-card">
@@ -71,14 +82,11 @@
 </footer>
 
 <script>
-  function loadState(){
-    try{ return JSON.parse(localStorage.getItem('vg_devices')||'{}'); }catch(e){ return {}; }
-  }
-
-  const state = loadState();
-  const caneOn = state.cane === true;
-  const glassesOn = state.glasses === true;
-  const anyOn = caneOn || glassesOn;
+  /* HM-10 BLE UART service/characteristic UUIDs.
+     If the glasses/cane run an ESP32 instead, program it to expose the same
+     UUIDs so this code works unchanged. */
+  const UART_SERVICE = 0xFFE0;
+  const UART_CHAR = 0xFFE1;
 
   const connStatus = document.getElementById('connStatus');
   const caneReading = document.getElementById('caneReading');
@@ -87,61 +95,138 @@
   const glassesSub = document.getElementById('glassesSub');
   const alertCountEl = document.getElementById('alertCount');
   const logBody = document.getElementById('logBody');
+  const connectCaneBtn = document.getElementById('connectCaneBtn');
+  const connectGlassesBtn = document.getElementById('connectGlassesBtn');
+  const simulateBtn = document.getElementById('simulateBtn');
 
   let alertCount = 0;
+  let logCleared = false;
+  const links = { cane: { connected:false, sim:false }, glasses: { connected:false, sim:false } };
 
-  if(anyOn){
-    const names = [caneOn && 'Cane', glassesOn && 'Glasses'].filter(Boolean).join(' + ');
-    connStatus.classList.add('on');
-    connStatus.innerHTML = '<span class="dot"></span>' + names + ' connected';
-    logBody.innerHTML = '';
+  function fmtTime(){ return new Date().toTimeString().slice(0,8); }
+
+  function clearLogIfNeeded(){
+    if(!logCleared){ logBody.innerHTML = ''; logCleared = true; }
   }
 
-  if(caneOn){
-    caneSub.textContent = 'Live · updates every 1.2s';
-  }
-  if(glassesOn){
-    glassesSub.textContent = 'Live · updates every 1.2s';
-  }
-
-  function fmtTime(){
-    const d = new Date();
-    return d.toTimeString().slice(0,8);
-  }
-
-  function pushLog(source, distance, alertLevel){
+  function pushLog(source, distance, level, tagOverride){
+    clearLogIfNeeded();
     const row = document.createElement('div');
     row.className = 'log-row';
-    const tagClass = alertLevel === 'warn' ? 'warn' : 'info';
-    const tagText = alertLevel === 'warn' ? 'Obstacle' : 'Clear';
+    const tagClass = level === 'warn' ? 'warn' : 'info';
+    const tagText = tagOverride || (level === 'warn' ? 'Obstacle' : 'Clear');
     row.innerHTML = `<span class="log-time">${fmtTime()}</span><span class="log-source">${source} · ${distance}cm</span><span class="log-tag ${tagClass}">${tagText}</span>`;
     logBody.prepend(row);
     while(logBody.children.length > 25){ logBody.removeChild(logBody.lastChild); }
   }
 
-  function tick(){
-    if(caneOn){
-      const d = Math.floor(20 + Math.random()*130);
-      caneReading.textContent = d + 'cm';
-      const warn = d < 45;
-      caneReading.classList.toggle('alert', warn);
-      if(warn){ alertCount++; alertCountEl.textContent = alertCount; pushLog('Cane', d, 'warn'); }
-      else if(Math.random() < 0.3){ pushLog('Cane', d, 'info'); }
-    }
-    if(glassesOn){
-      const d = Math.floor(30 + Math.random()*150);
-      glassesReading.textContent = d + 'cm';
-      const warn = d < 55;
-      glassesReading.classList.toggle('alert', warn);
-      if(warn){ alertCount++; alertCountEl.textContent = alertCount; pushLog('Glasses', d, 'warn'); }
-      else if(Math.random() < 0.3){ pushLog('Glasses', d, 'info'); }
+  function updateStatusPill(){
+    const parts = [];
+    if(links.cane.connected) parts.push('Cane (live)');
+    else if(links.cane.sim) parts.push('Cane (simulated)');
+    if(links.glasses.connected) parts.push('Glasses (live)');
+    else if(links.glasses.sim) parts.push('Glasses (simulated)');
+    if(parts.length === 0){
+      connStatus.classList.remove('on');
+      connStatus.innerHTML = '<span class="dot"></span>No devices connected';
+    } else {
+      connStatus.classList.add('on');
+      connStatus.innerHTML = '<span class="dot"></span>' + parts.join(' + ');
     }
   }
 
-  if(anyOn){
-    tick();
-    setInterval(tick, 1200);
+  function handleReading(which, distance, live){
+    const valueEl = which === 'cane' ? caneReading : glassesReading;
+    const subEl = which === 'cane' ? caneSub : glassesSub;
+    const threshold = which === 'cane' ? 45 : 55;
+    const label = which === 'cane' ? 'Cane' : 'Glasses';
+
+    valueEl.textContent = distance + 'cm';
+    subEl.textContent = live ? 'Live · Bluetooth' : 'Live · simulated demo';
+    const warn = distance < threshold;
+    valueEl.classList.toggle('alert', warn);
+    if(warn){
+      alertCount++; alertCountEl.textContent = alertCount;
+      pushLog(label, distance, 'warn', live ? 'Obstacle · BLE' : 'Obstacle · sim');
+    } else if(Math.random() < 0.3){
+      pushLog(label, distance, 'info', live ? 'Clear · BLE' : 'Clear · sim');
+    }
   }
+
+  /* ---------- real Web Bluetooth ---------- */
+  const supportsBluetooth = 'bluetooth' in navigator;
+  if(!supportsBluetooth){
+    document.getElementById('bleUnsupported').style.display = 'block';
+    connectCaneBtn.disabled = true;
+    connectGlassesBtn.disabled = true;
+    connectCaneBtn.style.opacity = 0.5;
+    connectGlassesBtn.style.opacity = 0.5;
+  }
+
+  async function connectDevice(which){
+    const btn = which === 'cane' ? connectCaneBtn : connectGlassesBtn;
+    btn.textContent = 'Scanning…';
+    btn.disabled = true;
+    try{
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [UART_SERVICE] }],
+        optionalServices: [UART_SERVICE]
+      });
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(UART_SERVICE);
+      const characteristic = await service.getCharacteristic(UART_CHAR);
+      await characteristic.startNotifications();
+
+      let buffer = '';
+      characteristic.addEventListener('characteristicvaluechanged', (event)=>{
+        const chunk = new TextDecoder().decode(event.target.value);
+        buffer += chunk;
+        let idx;
+        while((idx = buffer.indexOf('\n')) >= 0){
+          const line = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx + 1);
+          const n = parseInt(line, 10);
+          if(!isNaN(n)){ handleReading(which, n, true); }
+        }
+      });
+
+      device.addEventListener('gattserverdisconnected', ()=>{
+        links[which].connected = false;
+        updateStatusPill();
+        btn.textContent = which === 'cane' ? 'Connect cane (Bluetooth)' : 'Connect glasses (Bluetooth)';
+        btn.disabled = false;
+      });
+
+      links[which].connected = true;
+      links[which].sim = false;
+      updateStatusPill();
+      btn.textContent = 'Connected — ' + device.name;
+    }catch(err){
+      btn.textContent = which === 'cane' ? 'Connect cane (Bluetooth)' : 'Connect glasses (Bluetooth)';
+      btn.disabled = false;
+      if(err.name !== 'NotFoundError'){
+        pushLog(which === 'cane' ? 'Cane' : 'Glasses', '—', 'warn', 'Connection failed');
+      }
+    }
+  }
+
+  connectCaneBtn.addEventListener('click', ()=> connectDevice('cane'));
+  connectGlassesBtn.addEventListener('click', ()=> connectDevice('glasses'));
+
+  /* ---------- simulated fallback (for demos without hardware on hand) ---------- */
+  simulateBtn.addEventListener('click', ()=>{
+    links.cane.sim = !links.cane.connected;
+    links.glasses.sim = !links.glasses.connected;
+    updateStatusPill();
+    simulateBtn.textContent = 'Simulating…';
+    simulateBtn.disabled = true;
+  });
+
+  function simTick(){
+    if(links.cane.sim){ handleReading('cane', Math.floor(20 + Math.random()*130), false); }
+    if(links.glasses.sim){ handleReading('glasses', Math.floor(30 + Math.random()*150), false); }
+  }
+  setInterval(simTick, 1200);
 </script>
 
 </body>
