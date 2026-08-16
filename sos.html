@@ -108,6 +108,16 @@
       <button class="btn btn-primary" id="importBtn" style="cursor:pointer;">Import from contacts</button>
     </div>
 
+    <div id="consentBox" class="placeholder" style="display:none; text-align:left; margin-top:20px; padding:22px 24px;">
+      <div class="ph-tag">Permission needed</div>
+      <h4>Allow Vision Guard to access your contacts?</h4>
+      <p style="margin-bottom:18px;">This opens your phone's own contact picker to choose trusted contacts. Vision Guard only sees the people you pick — nothing is uploaded anywhere, it's saved on this device only.</p>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-primary" id="allowImportBtn" style="cursor:pointer;">Allow</button>
+        <button class="btn btn-ghost" id="denyImportBtn" style="cursor:pointer;">Not now</button>
+      </div>
+    </div>
+
     <div class="add-contact-form">
       <input type="text" id="cName" placeholder="Name">
       <input type="tel" id="cPhone" placeholder="Phone number, e.g. +91 98765 43210">
@@ -189,26 +199,39 @@
 
   const importBtn = document.getElementById('importBtn');
   const permNote = document.getElementById('permNote');
-  if(!('contacts' in navigator && 'ContactsManager' in window)){
-    permNote.textContent = 'Contact import isn\u2019t supported in this browser — add trusted contacts by hand below.';
-    importBtn.style.display = 'none';
-  } else {
-    importBtn.addEventListener('click', async ()=>{
-      try{
-        const props = ['name', 'tel'];
-        const selected = await navigator.contacts.select(props, { multiple: true });
-        selected.forEach(p=>{
-          const name = (p.name && p.name[0]) || 'Contact';
-          const phone = (p.tel && p.tel[0]) || '';
-          if(phone){ contacts.push({ name, phone }); }
-        });
-        saveContacts(contacts);
-        renderContacts();
-      }catch(err){
-        permNote.textContent = 'Contacts permission was declined — add trusted contacts by hand below.';
-      }
-    });
-  }
+  const consentBox = document.getElementById('consentBox');
+  const allowImportBtn = document.getElementById('allowImportBtn');
+  const denyImportBtn = document.getElementById('denyImportBtn');
+  const supportsContactPicker = ('contacts' in navigator && 'ContactsManager' in window);
+
+  importBtn.addEventListener('click', ()=>{
+    consentBox.style.display = 'block';
+  });
+
+  denyImportBtn.addEventListener('click', ()=>{
+    consentBox.style.display = 'none';
+  });
+
+  allowImportBtn.addEventListener('click', async ()=>{
+    if(!supportsContactPicker){
+      consentBox.innerHTML = '<div class="ph-tag">Not available</div><h4>Contact import isn\u2019t supported on this browser or device.</h4><p>Add trusted contacts by hand using the form below instead.</p>';
+      return;
+    }
+    try{
+      const props = ['name', 'tel'];
+      const selected = await navigator.contacts.select(props, { multiple: true });
+      selected.forEach(p=>{
+        const name = (p.name && p.name[0]) || 'Contact';
+        const phone = (p.tel && p.tel[0]) || '';
+        if(phone){ contacts.push({ name, phone }); }
+      });
+      saveContacts(contacts);
+      renderContacts();
+      consentBox.style.display = 'none';
+    }catch(err){
+      consentBox.innerHTML = '<div class="ph-tag">Permission declined</div><h4>Contacts access was declined.</h4><p>Add trusted contacts by hand using the form below instead.</p>';
+    }
+  });
 
   /* ---------- monitoring toggles ---------- */
   const monitors = {
