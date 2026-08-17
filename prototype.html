@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototype — Vision Guard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <nav class="wrap">
+    <a href="index.html" class="brand" style="text-decoration:none;"><span class="brand-dot"></span>VISION GUARD</a>
+    <div class="navlinks">
+      <a href="index.html">Home</a>
+      <a href="devices.html">Devices</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="location.html">Location</a>
+      <a href="sos.html">SOS</a>
+      <a href="prototype.html">Prototype</a>
+      <a href="team.html">Team</a>
+    </div>
+  </nav>
+</header>
+
+<section class="page-hero">
+  <div class="wrap">
+    <div class="eyebrow">Built &amp; working</div>
+    <h1>The prototype</h1>
+    <p class="lede">The cane and glasses units, built and wired — not a render, not a mockup. Photos of the actual hardware, plus a working demo.</p>
+
+    <div class="gallery-grid">
+      <div class="gallery-item">
+        <img src="media/glasses-front.jpeg" alt="Sensing glasses with an HC-SR04 ultrasonic sensor mounted on the frame bridge">
+        <div class="gallery-caption">Glasses unit — HC-SR04 mounted on the frame bridge, wired to the pocket controller</div>
+      </div>
+      <div class="gallery-item">
+        <img src="media/cane-box-glasses.jpeg" alt="Arduino UNO and 9V battery inside the cane's tiffin-box enclosure, next to the glasses unit">
+        <div class="gallery-caption">Cane unit — Arduino UNO and 9V battery inside the tiffin-box enclosure</div>
+      </div>
+    </div>
+
+    <div class="eyebrow reveal" style="margin-top:56px;">Working demo</div>
+    <h2 class="reveal">See it detect an obstacle.</h2>
+    <div class="video-wrap">
+      <video controls preload="metadata">
+        <source src="media/demo.mp4" type="video/mp4">
+        Your browser doesn't support embedded video — <a href="media/demo.mp4" style="color:var(--teal);">download the file directly</a> instead.
+      </video>
+    </div>
+
+    <div class="cta-row" style="margin-top:40px;">
+      <a href="index.html" class="btn btn-ghost">← Back to home</a>
+      <a href="sos.html" class="btn btn-ghost">SOS alerts →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-row">
+    <div class="brand"><span class="brand-dot"></span>VISION GUARD</div>
+    <div>Assistive mobility kit — student project</div>
+  </div>
+</footer>
+
+</body>
+</html>
